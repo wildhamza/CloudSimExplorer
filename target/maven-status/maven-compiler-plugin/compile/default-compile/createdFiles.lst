@@ -1,8 +1,9 @@
-cloudsim/utils/CloudSimUtils.class
-cloudsim/loadbalancing/LoadBalancer.class
-cloudsim/policies/VmAllocationPolicyComparison.class
-cloudsim/Main.class
-cloudsim/simulation/LoadBalancingSimulation.class
-cloudsim/report/SimulationReport.class
-cloudsim/monitor/UtilizationMonitor.class
-cloudsim/simulation/BasicCloudSimulation.class
+cloudsim\policies\VmAllocationPolicyComparison.class
+cloudsim\simulation\BasicCloudSimulation.class
+cloudsim\utils\CloudSimUtils.class
+cloudsim\Main.class
+cloudsim\report\SimulationReport.class
+cloudsim\simulation\LoadBalancingSimulation.class
+cloudsim\simulation\SpaceSharedCloudSimulation.class
+cloudsim\monitor\UtilizationMonitor.class
+cloudsim\loadbalancing\LoadBalancer.class

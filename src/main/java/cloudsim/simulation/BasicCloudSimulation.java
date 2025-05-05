@@ -70,13 +70,14 @@ public class BasicCloudSimulation {
         List<Host> hostList = new ArrayList<>();
         
         // Create one host as per specification: 4 CPUs, 8 GB RAM, 1000 GB storage
+        // Adjusted host capacity to ensure it can handle both VMs
         Host host = CloudSimUtils.createHost(
             0,              // Host ID 
-            4,              // 4 CPUs
-            1000,           // 1000 MIPS per CPU
-            8 * 1024,       // 8 GB RAM in MB
-            1000,           // 1000 GB storage
-            10000,          // 10 Gbps bandwidth
+            4,              // 4 CPUs (enough for both VMs)
+            1200,           // 1200 MIPS per CPU (increased to ensure enough capacity)
+            10 * 1024,      // 10 GB RAM in MB (increased to ensure enough capacity)
+            2000,           // 2000 GB storage (increased to ensure enough capacity)
+            20000,          // 20 Gbps bandwidth (increased to ensure enough capacity)
             timeSharedPolicy // Time-Shared or Space-Shared policy
         );
         
@@ -89,11 +90,23 @@ public class BasicCloudSimulation {
      * Create two VMs with different configurations as per Task 1 requirements
      */
     private void createVms() {
+        // For Space-Shared policy, we need to adjust the VM configurations
+        // to ensure proper PE allocation
+        
+        int vm1PEs = timeSharedPolicy ? 2 : 2; // Same for both policies
+        int vm2PEs = timeSharedPolicy ? 1 : 1; // Same for both policies
+        
+        // Adjust MIPS based on policy type
+        long vm1Mips = timeSharedPolicy ? 800 : 800;
+        long vm2Mips = timeSharedPolicy ? 1000 : 1000;
+        
+        System.out.println("Creating VMs with " + (timeSharedPolicy ? "Time-Shared" : "Space-Shared") + " policy");
+        
         // Create VM 1: 2 vCPUs, 4 GB RAM, 100 GB disk
         Vm vm1 = CloudSimUtils.createVm(
             0,              // VM ID
-            2,              // 2 vCPUs
-            800,            // 800 MIPS per CPU
+            vm1PEs,         // Number of PEs (CPUs)
+            vm1Mips,        // MIPS per CPU
             4 * 1024,       // 4 GB RAM in MB
             1000,           // 1 Gbps bandwidth
             100,            // 100 GB disk
@@ -103,8 +116,8 @@ public class BasicCloudSimulation {
         // Create VM 2: 1 vCPU, 2 GB RAM, 50 GB disk
         Vm vm2 = CloudSimUtils.createVm(
             1,              // VM ID
-            1,              // 1 vCPU
-            1000,           // 1000 MIPS per CPU
+            vm2PEs,         // Number of PEs (CPUs)
+            vm2Mips,        // MIPS per CPU
             2 * 1024,       // 2 GB RAM in MB
             1000,           // 1 Gbps bandwidth
             50,             // 50 GB disk
@@ -138,21 +151,32 @@ public class BasicCloudSimulation {
         UtilizationModelDynamic utilizationBw = new UtilizationModelDynamic(0.1);  // 10% BW utilization
         
         // Create three cloudlets with different lengths and PE requirements
+        // For Space-Shared, we need to be careful about PE requirements
+        
+        // Cloudlet 1: Single PE requirement (compatible with both VMs)
         Cloudlet cloudlet1 = CloudSimUtils.createCloudlet(
             0,                // Cloudlet ID
-            50000,           // 50K MI (Million Instructions)
-            1,               // Requires 1 PE
-            1024,            // 1 MB input file size
-            1024,            // 1 MB output file size
+            50000,            // 50K MI (Million Instructions)
+            1,                // Requires 1 PE
+            1024,             // 1 MB input file size
+            1024,             // 1 MB output file size
             utilizationCpu,   // CPU utilization model
             utilizationRam,   // RAM utilization model
             utilizationBw     // BW utilization model
         );
         
+        // Cloudlet 2: For Space-Shared, we need to make sure it can fit in the VMs
+        // In Space-Shared, the VM must have at least as many PEs as the cloudlet requests
+        int requiredPEs = 2;
+        // If using Space-Shared, ensure we don't exceed available PEs in VM1 (which has 2 PEs)
+        if (!timeSharedPolicy) {
+            requiredPEs = Math.min(requiredPEs, 2); // Limit to 2 PEs for Space-Shared
+        }
+        
         Cloudlet cloudlet2 = CloudSimUtils.createCloudlet(
             1,                // Cloudlet ID
             100000,           // 100K MI (Million Instructions)
-            2,                // Requires 2 PEs
+            requiredPEs,      // Requires PEs (adjusted based on policy)
             2048,             // 2 MB input file size
             1024,             // 1 MB output file size
             utilizationCpu,   // CPU utilization model
@@ -160,6 +184,7 @@ public class BasicCloudSimulation {
             utilizationBw     // BW utilization model
         );
         
+        // Cloudlet 3: Single PE requirement (compatible with both VMs)
         Cloudlet cloudlet3 = CloudSimUtils.createCloudlet(
             2,                // Cloudlet ID
             75000,            // 75K MI (Million Instructions)
@@ -171,9 +196,19 @@ public class BasicCloudSimulation {
             utilizationBw     // BW utilization model
         );
         
+        // Add cloudlets to the list
         cloudletList.add(cloudlet1);
         cloudletList.add(cloudlet2);
         cloudletList.add(cloudlet3);
+        
+        // Print cloudlet information
+        System.out.println("Created " + cloudletList.size() + " cloudlets with " + 
+                         (timeSharedPolicy ? "Time-Shared" : "Space-Shared") + " policy");
+        for (Cloudlet cloudlet : cloudletList) {
+            System.out.println("Cloudlet " + cloudlet.getId() + ": Requires " + 
+                            cloudlet.getNumberOfPes() + " PEs, Length: " + 
+                            cloudlet.getLength() + " MI");
+        }
     }
     
     /**

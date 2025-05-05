@@ -1,5 +1,7 @@
 package cloudsim.utils;
 
+import org.cloudbus.cloudsim.allocationpolicies.VmAllocationPolicy;
+import org.cloudbus.cloudsim.allocationpolicies.VmAllocationPolicyBestFit;
 import org.cloudbus.cloudsim.allocationpolicies.VmAllocationPolicySimple;
 import org.cloudbus.cloudsim.brokers.DatacenterBroker;
 import org.cloudbus.cloudsim.brokers.DatacenterBrokerSimple;
@@ -100,17 +102,26 @@ public class CloudSimUtils {
     public static Vm createVm(int id, int numCpus, long mipsPerCpu, int ramInMB, 
                             int bwInMbps, int sizeInGB, boolean timeShared) {
         // Convert GB to Bytes for storage
-        System.out.println("GB size: " + sizeInGB);
-        long sizeInBytes = (long)sizeInGB * 1024L * 1024L * 1024L;
-        System.out.println("Bytes size: " + sizeInBytes);
+        System.out.println("Creating VM " + id + " with specifications:");
+        System.out.println("- Number of CPUs: " + numCpus);
+        System.out.println("- MIPS per CPU: " + mipsPerCpu);
+        System.out.println("- Total MIPS: " + (mipsPerCpu * numCpus));
+        System.out.println("- RAM: " + ramInMB + " MB");
+        System.out.println("- Bandwidth: " + bwInMbps + " Mbps");
+        System.out.println("- Storage: " + sizeInGB + " GB");
         
+        long sizeInBytes = (long)sizeInGB * 1024L * 1024L * 1024L;
+        
+        // Create VM with proper initialization
         Vm vm = new VmSimple(id, mipsPerCpu * numCpus, numCpus);
         vm.setRam(ramInMB).setBw(bwInMbps).setSize(sizeInBytes);
         
         if (timeShared) {
             vm.setCloudletScheduler(new CloudletSchedulerTimeShared());
+            System.out.println("- Using CloudletSchedulerTimeShared");
         } else {
             vm.setCloudletScheduler(new CloudletSchedulerSpaceShared());
+            System.out.println("- Using CloudletSchedulerSpaceShared");
         }
         
         return vm;
@@ -160,7 +171,29 @@ public class CloudSimUtils {
                 + "Num PEs=" + host.getNumberOfPes());
         }
         
-        Datacenter datacenter = new DatacenterSimple(simulation, hostList, new VmAllocationPolicySimple());
+        // Check if we're using TimeShared or SpaceShared VM scheduler
+        boolean usingTimeShared = true;
+        if (!hostList.isEmpty()) {
+            usingTimeShared = hostList.get(0).getVmScheduler().getClass().getSimpleName().contains("TimeShared");
+        }
+        
+        // Select appropriate allocation policy based on scheduler type
+        VmAllocationPolicy allocationPolicy;
+        if (usingTimeShared) {
+            allocationPolicy = new VmAllocationPolicyBestFit();
+            System.out.println("Using VmAllocationPolicyBestFit for Time-Shared scheduling");
+        } else {
+            // For Space-Shared, use a simpler allocation policy that's more compatible
+            allocationPolicy = new VmAllocationPolicySimple();
+            System.out.println("Using VmAllocationPolicySimple for Space-Shared scheduling");
+        }
+        
+        // Configure datacenter with proper characteristics
+        DatacenterSimple datacenter = new DatacenterSimple(simulation, hostList, allocationPolicy);
+        
+        // Configure datacenter characteristics
+        datacenter.setSchedulingInterval(1); // Check events every second
+        
         return datacenter;
     }
 

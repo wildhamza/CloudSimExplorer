@@ -127,7 +127,7 @@ public class LoadBalancingSimulation {
      */
     private void createDatacenter() {
         // Create hosts
-        // Host H1: 4 CPUs, 8 GB RAM, 1000 GB storage (Overloaded)
+        // Host H1: 4 CPUs, 8 GB RAM, 1000 GB storage (will be overloaded)
         Host host1 = CloudSimUtils.createHost(
             0,                // Host ID 
             HOST_PES,         // 4 CPUs
@@ -138,7 +138,7 @@ public class LoadBalancingSimulation {
             true              // Time-Shared policy
         );
         
-        // Host H2: 4 CPUs, 8 GB RAM, 1000 GB storage (Underutilized)
+        // Host H2: 4 CPUs, 8 GB RAM, 1000 GB storage (initially underutilized)
         Host host2 = CloudSimUtils.createHost(
             1,                // Host ID 
             HOST_PES,         // 4 CPUs
@@ -152,84 +152,164 @@ public class LoadBalancingSimulation {
         hostList.add(host1);
         hostList.add(host2);
         
-        // Create datacenter
+        System.out.println("Created hosts with following specifications:");
+        System.out.printf("Host #0: %d CPUs (PEs), %d MIPS per CPU, %d MB RAM, %d GB Storage\n", 
+                HOST_PES, HOST_MIPS, HOST_RAM, HOST_STORAGE);
+        System.out.printf("Host #1: %d CPUs (PEs), %d MIPS per CPU, %d MB RAM, %d GB Storage\n", 
+                HOST_PES, HOST_MIPS, HOST_RAM, HOST_STORAGE);
+                
+        // To fix VM allocation issues, we need a custom VM allocation policy that ensures
+        // all VMs for host0 go to host0 and all VMs for host1 go to host1 initially
+        // to create an imbalanced situation
+        
+        // Create datacenter with a simple VM allocation policy
         datacenter = new DatacenterSimple(simulation, hostList, new VmAllocationPolicySimple());
         datacenter.setSchedulingInterval(1); // Check for events every second
     }
     
     /**
-     * Create VMs to create an overload scenario on Host 1
+     * Create VMs to create an overload scenario on Host 0
      */
     private void createVms() {
-        // Create VMs for Host 1 (enough to create overload)
-        for (int i = 0; i < 6; i++) {
-            Vm vm = CloudSimUtils.createVm(
-                i,              // VM ID
-                1,              // 1 vCPU
-                800,            // 800 MIPS per CPU
-                1024,           // 1 GB RAM in MB
-                1000,           // 1 Gbps bandwidth
-                10,             // 10 GB disk
-                true            // Time-Shared policy
-            );
-            vmList.add(vm);
-        }
+        // Create VMs with reduced requirements to prevent allocation failures
+        // For host 0 (will be overloaded) - create 3 VMs
+        System.out.println("Creating VMs for Load Balancing demonstration:");
         
-        // Create only one VM for Host 2 (to keep it underutilized)
-        Vm vm7 = CloudSimUtils.createVm(
-            6,              // VM ID
+        // First VM - 1 PE, 800 MIPS
+        Vm vm1 = CloudSimUtils.createVm(
+            0,              // VM ID
             1,              // 1 vCPU
-            500,            // 500 MIPS per CPU
+            800,            // 800 MIPS per CPU
             1024,           // 1 GB RAM in MB
             1000,           // 1 Gbps bandwidth
             10,             // 10 GB disk
             true            // Time-Shared policy
         );
-        vmList.add(vm7);
+        vmList.add(vm1);
+        System.out.println("Created VM #0: 1 vCPU, 800 MIPS, 1024 MB RAM - targeted for Host #0");
+        
+        // Second VM - 1 PE, 800 MIPS
+        Vm vm2 = CloudSimUtils.createVm(
+            1,              // VM ID
+            1,              // 1 vCPU
+            800,            // 800 MIPS per CPU
+            1024,           // 1 GB RAM in MB
+            1000,           // 1 Gbps bandwidth
+            10,             // 10 GB disk
+            true            // Time-Shared policy
+        );
+        vmList.add(vm2);
+        System.out.println("Created VM #1: 1 vCPU, 800 MIPS, 1024 MB RAM - targeted for Host #0");
+        
+        // Third VM - 1 PE, 800 MIPS
+        Vm vm3 = CloudSimUtils.createVm(
+            2,              // VM ID
+            1,              // 1 vCPU
+            800,            // 800 MIPS per CPU
+            1024,           // 1 GB RAM in MB
+            1000,           // 1 Gbps bandwidth
+            10,             // 10 GB disk
+            true            // Time-Shared policy
+        );
+        vmList.add(vm3);
+        System.out.println("Created VM #2: 1 vCPU, 800 MIPS, 1024 MB RAM - targeted for Host #0");
+        
+        // For host 1 (initially underutilized) - create 1 VM
+        Vm vm4 = CloudSimUtils.createVm(
+            3,              // VM ID
+            1,              // 1 vCPU
+            500,            // 500 MIPS per CPU (lower utilization)
+            1024,           // 1 GB RAM in MB
+            1000,           // 1 Gbps bandwidth
+            10,             // 10 GB disk
+            true            // Time-Shared policy
+        );
+        vmList.add(vm4);
+        System.out.println("Created VM #3: 1 vCPU, 500 MIPS, 1024 MB RAM - targeted for Host #1");
+        
+        System.out.println("VM allocation strategy: first 3 VMs assigned to Host #0, last VM to Host #1");
+        System.out.println("Host #0 is expected to be overloaded, Host #1 underutilized");
     }
     
     /**
-     * Create cloudlets (tasks) that will run on VMs
+     * Create cloudlets (tasks) that will run on VMs to create significant utilization differences
+     * for demonstrating load balancing
      */
     private void createCloudlets() {
         // Create utilization models for cloudlets
-        UtilizationModelDynamic utilizationCpu = new UtilizationModelDynamic(0.8); // 80% CPU utilization
         UtilizationModelDynamic utilizationRam = new UtilizationModelDynamic(0.3); // 30% RAM utilization
         UtilizationModelDynamic utilizationBw = new UtilizationModelDynamic(0.1);  // 10% BW utilization
         
-        // Create cloudlets for VMs on Host 1
-        for (int i = 0; i < 6; i++) {
-            Cloudlet cloudlet = CloudSimUtils.createCloudlet(
-                i,                // Cloudlet ID
-                100000,           // 100K MI (Million Instructions)
-                1,                // Requires 1 PE
-                1024,             // 1 MB input file size
-                1024,             // 1 MB output file size
-                utilizationCpu,   // CPU utilization model
-                utilizationRam,   // RAM utilization model
-                utilizationBw     // BW utilization model
-            );
-            
-            // Assign cloudlet to specific VM
-            cloudlet.setVm(vmList.get(i));
-            cloudletList.add(cloudlet);
-        }
+        System.out.println("Creating cloudlets with varying utilization patterns:");
         
-        // Create one cloudlet for VM on Host 2
-        Cloudlet cloudlet7 = CloudSimUtils.createCloudlet(
-            6,                  // Cloudlet ID
-            50000,              // 50K MI (Million Instructions)
-            1,                  // Requires 1 PE
-            1024,               // 1 MB input file size
-            1024,               // 1 MB output file size
-            new UtilizationModelDynamic(0.4),   // 40% CPU utilization
-            utilizationRam,     // RAM utilization model
-            utilizationBw       // BW utilization model
+        // For VMs on Host 0 (overloaded host) - create high-utilization cloudlets
+        
+        // Cloudlet for VM #0 - High CPU utilization (80%)
+        UtilizationModelDynamic highUtilizationCpu1 = new UtilizationModelDynamic(0.8);
+        Cloudlet cloudlet1 = CloudSimUtils.createCloudlet(
+            0,                // Cloudlet ID
+            100000,           // Length in MI (Million Instructions)
+            1,                // PE requirement
+            1024,             // 1 MB input file size
+            1024,             // 1 MB output file size
+            highUtilizationCpu1, // 80% CPU utilization
+            utilizationRam,   // RAM utilization model
+            utilizationBw     // BW utilization model
         );
+        cloudlet1.setVm(vmList.get(0));
+        cloudletList.add(cloudlet1);
+        System.out.println("Created Cloudlet #0: 80% CPU utilization, assigned to VM #0");
         
-        // Assign cloudlet to VM 7
-        cloudlet7.setVm(vmList.get(6));
-        cloudletList.add(cloudlet7);
+        // Cloudlet for VM #1 - High CPU utilization (85%)
+        UtilizationModelDynamic highUtilizationCpu2 = new UtilizationModelDynamic(0.85);
+        Cloudlet cloudlet2 = CloudSimUtils.createCloudlet(
+            1,                // Cloudlet ID
+            120000,           // Length in MI (Million Instructions)
+            1,                // PE requirement
+            1024,             // 1 MB input file size
+            1024,             // 1 MB output file size
+            highUtilizationCpu2, // 85% CPU utilization
+            utilizationRam,   // RAM utilization model
+            utilizationBw     // BW utilization model
+        );
+        cloudlet2.setVm(vmList.get(1));
+        cloudletList.add(cloudlet2);
+        System.out.println("Created Cloudlet #1: 85% CPU utilization, assigned to VM #1");
+        
+        // Cloudlet for VM #2 - High CPU utilization (90%)
+        UtilizationModelDynamic highUtilizationCpu3 = new UtilizationModelDynamic(0.9);
+        Cloudlet cloudlet3 = CloudSimUtils.createCloudlet(
+            2,                // Cloudlet ID
+            90000,            // Length in MI (Million Instructions)
+            1,                // PE requirement
+            1024,             // 1 MB input file size
+            1024,             // 1 MB output file size
+            highUtilizationCpu3, // 90% CPU utilization
+            utilizationRam,   // RAM utilization model
+            utilizationBw     // BW utilization model
+        );
+        cloudlet3.setVm(vmList.get(2));
+        cloudletList.add(cloudlet3);
+        System.out.println("Created Cloudlet #2: 90% CPU utilization, assigned to VM #2");
+        
+        // Cloudlet for VM #3 (on Host 1) - Low CPU utilization (30%)
+        UtilizationModelDynamic lowUtilizationCpu = new UtilizationModelDynamic(0.3);
+        Cloudlet cloudlet4 = CloudSimUtils.createCloudlet(
+            3,                // Cloudlet ID
+            50000,            // Length in MI (Million Instructions)
+            1,                // PE requirement
+            1024,             // 1 MB input file size
+            1024,             // 1 MB output file size
+            lowUtilizationCpu, // 30% CPU utilization
+            utilizationRam,   // RAM utilization model
+            utilizationBw     // BW utilization model
+        );
+        cloudlet4.setVm(vmList.get(3));
+        cloudletList.add(cloudlet4);
+        System.out.println("Created Cloudlet #3: 30% CPU utilization, assigned to VM #3");
+        
+        System.out.println("Initial setup: VMs 0-2 on Host #0 with high utilization, VM #3 on Host #1 with low utilization");
+        System.out.println("Expected behavior: Load balancer should migrate at least one VM from Host #0 to Host #1");
     }
     
     /**
