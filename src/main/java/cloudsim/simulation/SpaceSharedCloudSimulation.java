@@ -1,6 +1,5 @@
 package cloudsim.simulation;
 
-import cloudsim.utils.CloudSimUtils;
 import org.cloudbus.cloudsim.allocationpolicies.VmAllocationPolicySimple;
 import org.cloudbus.cloudsim.brokers.DatacenterBroker;
 import org.cloudbus.cloudsim.brokers.DatacenterBrokerSimple;

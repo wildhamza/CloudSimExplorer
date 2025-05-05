@@ -24,6 +24,7 @@ import java.util.Map;
  */
 public class VmAllocationPolicyComparison {
     
+    @SuppressWarnings("unused")
     private final CloudSim simulation;
     private List<Host> hostList;
     private List<Vm> vmList;
@@ -62,6 +63,7 @@ public class VmAllocationPolicyComparison {
     /**
      * Create simulation resources (hosts, VMs, cloudlets)
      */
+    @SuppressWarnings("unused")
     private void createResources() {
         // Create 4 hosts with varying capacities
         for (int i = 0; i < 4; i++) {

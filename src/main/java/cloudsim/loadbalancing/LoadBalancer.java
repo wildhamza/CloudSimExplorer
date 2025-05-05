@@ -18,6 +18,7 @@ public class LoadBalancer {
     
     private final Datacenter datacenter;
     private final UtilizationMonitor utilizationMonitor;
+    @SuppressWarnings("unused")
     private final DatacenterBroker broker;
     
     /**

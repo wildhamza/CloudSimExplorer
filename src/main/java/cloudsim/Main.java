@@ -1,7 +1,6 @@
 package cloudsim;
 
 import cloudsim.simulation.BasicCloudSimulation;
-import cloudsim.simulation.LoadBalancingSimulation;
 import cloudsim.simulation.SpaceSharedCloudSimulation;
 
 /**
